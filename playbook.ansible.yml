@@ -11,51 +11,59 @@
     jenkins_url: "https://get.jenkins.io/war-stable/2.303.2/jenkins.war"
     jenkins_home: "/opt/tomcat/jenkins"
     jolokia_url: "https://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-agent-war/2.2.9/jolokia-agent-war-2.2.9.war"
-
+     
   tasks:
-    - name: Instala dependências
+  
+    #Instalação do Java 11 para uso do Tomcat
+    - name: Instalar dependências
       apt:
         name: "{{ java_package }}"
         state: present
         update_cache: yes
-
-    - name: Cria diretório para o Tomcat
+        
+    #Criação do diretório /opt/tomcat
+    - name: Criar diretório para o Tomcat
       file:
         path: "{{ tomcat_dir }}"
         state: directory
         owner: "{{ tomcat_usuario }}"
         group: "{{ tomcat_usuario }}"
         mode: '0755'
-
-    - name: Baixa e extrai o Tomcat
+        
+     #Extração do Tomcat 9.0.104
+    - name: Baixar e extrai o Tomcat
       unarchive:
         src: "{{ tomcat_download_url }}"
         dest: "{{ tomcat_dir }}"
         remote_src: yes
         extra_opts: [--strip-components=1]
-
-    - name: Encontra todos os scripts .sh no diretório bin
+        
+    #Buscando se todos os scripts estão disponíveis no Tomcat
+    - name: Encontrar todos os scripts .sh no diretório bin
       find:
         paths: "{{ tomcat_dir }}/bin"
         patterns: "*.sh"
         recurse: no
       register: sh_scripts
-
-    - name: Aplica permissão 0755 aos scripts .sh
+      
+    #Alteração permissão para execução dos arquivos pelo usuário ubuntu
+    - name: Aplicar permissão 0755 aos scripts .sh
       file:
         path: "{{ item.path }}"
         mode: '0755'
       loop: "{{ sh_scripts.files }}"
-
-    - name: Cria diretório para arquivos de configuração do systemd
+      
+    #Criando diretório para execução do sistema
+    - name: Criar diretório para arquivos de configuração do systemd
       file:
         path: /etc/systemd/system/tomcat.service.d
         state: directory
         owner: root
         group: root
         mode: '0755'
-
-    - name: Cria variáveis de ambiente no systemd para Tomcat
+        
+    #Criando variáveis de Jenkins e do Tomcat
+    - name: Criar variáveis de ambiente no systemd para Tomcat
       copy:
         dest: /etc/systemd/system/tomcat.service.d/override.conf
         content: |
@@ -68,13 +76,15 @@
         mode: '0644'
       notify:
         - Reload systemd
-
-    - name: Inicia o Tomcat
+        
+    #Iniciando Serviço
+    - name: Iniciar o Tomcat
       shell: "{{ tomcat_dir }}/bin/startup.sh"
       args:
         chdir: "{{ tomcat_dir }}/bin"
-
-    - name: Aguarda o Tomcat responder na porta 8080
+    
+    #Testar conexão com o servidor
+    - name: Aguardar o Tomcat responder na porta 8080
       uri:
         url: http://localhost:8080
         method: GET
@@ -84,12 +94,13 @@
       delay: 5
       until: tomcat_response.status == 200
 
-    - name: Para o Tomcat antes de modificar o setenv.sh
+    #Stop no serviço para implementação do Jenkins e Jolokia
+    - name: Parar o Tomcat antes de modificar o setenv.sh
       shell: "{{ tomcat_dir }}/bin/shutdown.sh"
       args:
         chdir: "{{ tomcat_dir }}/bin"
       ignore_errors: yes
-
+    #Criação do arquivo para definição do Jenkins
     - name: Cria o arquivo setenv.sh se não existir
       file:
         path: "{{ tomcat_dir }}/bin/setenv.sh"
@@ -98,12 +109,14 @@
         group: "{{ tomcat_usuario }}"
         mode: '0755'
 
+    #Definição da variável de ambiente Jenkins
     - name: Configura variáveis de ambiente no setenv.sh
       blockinfile:
         path: "{{ tomcat_dir }}/bin/setenv.sh"
         block: |
           export JENKINS_HOME="{{ jenkins_home }}"
-
+          
+    #Diretório criado dentro da pasta /tomcat
     - name: Cria diretório JENKINS_HOME
       file:
         path: "{{ jenkins_home }}"
@@ -111,18 +124,20 @@
         owner: "{{ tomcat_usuario }}"
         group: "{{ tomcat_usuario }}"
         mode: '0755'
-
+    #Download de versão WAR do Jenkins
     - name: Baixa o jenkins.war
       get_url:
         url: "{{ jenkins_url }}"
         dest: "{{ tomcat_dir }}/webapps/jenkins.war"
         mode: '0644'
-
+    #Download da versão WAR do Jolokia
     - name: Baixa o jolokia.war
       get_url:
         url: "{{ jolokia_url }}"
         dest: "{{ tomcat_dir }}/webapps/jolokia.war"
         mode: '0644'
+    
+    #Criação do usuário no tomcat para uso do Jolokia 
     - name: Garantir usuário Jolokia no tomcat-users.xml
       blockinfile:
         path: /opt/tomcat/conf/tomcat-users.xml
@@ -132,11 +147,13 @@
           <role rolename="jolokia"/>
           <user username="jolokia" password="jolokia" roles="jolokia"/>
 
+    #Inicia o Tomcat com Jenkins e Jolokia configurados
     - name: Inicia novamente o Tomcat com Jenkins e Jolokia
       shell: "{{ tomcat_dir }}/bin/startup.sh"
       args:
         chdir: "{{ tomcat_dir }}/bin"
-
+  
+  #Manipulador usado para após adição das variáveis de ambiente
   handlers:
     - name: Reload systemd
       systemd:
