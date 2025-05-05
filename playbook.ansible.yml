@@ -1,4 +1,4 @@
-- name: Instalação do Apache Tomcat e Jenkins
+- name: Instalação do Apache Tomcat com Jenkins e Jolokia
   hosts: Projeto-siga
   become: true
 
@@ -7,10 +7,10 @@
     tomcat_version: 9.0.104
     tomcat_download_url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.104/bin/apache-tomcat-9.0.104.tar.gz"
     tomcat_dir: /opt/tomcat
-    tomcat_user: ubuntu
-    jenkins_war_url: "https://get.jenkins.io/war-stable/2.303.2/jenkins.war"
-    tomcat_webapps_dir: "/opt/tomcat/webapps"
-    jenkins_home: "/opt/jenkins"
+    tomcat_usuario: ubuntu
+    jenkins_url: "https://get.jenkins.io/war-stable/2.303.2/jenkins.war"
+    jenkins_home: "/opt/tomcat/jenkins"
+    jolokia_url: "https://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-agent-war/2.2.9/jolokia-agent-war-2.2.9.war"
 
   tasks:
     - name: Instala dependências
@@ -23,11 +23,11 @@
       file:
         path: "{{ tomcat_dir }}"
         state: directory
-        owner: "{{ tomcat_user }}"
-        group: "{{ tomcat_user }}"
+        owner: "{{ tomcat_usuario }}"
+        group: "{{ tomcat_usuario }}"
         mode: '0755'
 
-    - name: Baixa e extrai o Tomcat 9.0.104
+    - name: Baixa e extrai o Tomcat
       unarchive:
         src: "{{ tomcat_download_url }}"
         dest: "{{ tomcat_dir }}"
@@ -64,7 +64,7 @@
           Environment="CATALINA_HOME={{ tomcat_dir }}"
           Environment="CATALINA_BASE={{ tomcat_dir }}"
           Environment="JAVA_OPTS=-Xms512m -Xmx1024m"
-          Environment="JENKINS_HOME={{ jenkins_home }}"
+          Environment="JENKINS_HOME={{  jenkins_home  }}"
         mode: '0644'
       notify:
         - Reload systemd
@@ -74,34 +74,68 @@
       args:
         chdir: "{{ tomcat_dir }}/bin"
 
-    - name: Baixar o arquivo jenkins.war
-      get_url:
-        url: "{{ jenkins_war_url }}"
-        dest: "{{ tomcat_webapps_dir }}/jenkins.war"
-        mode: '0644'
-        
+    - name: Aguarda o Tomcat responder na porta 8080
+      uri:
+        url: http://localhost:8080
+        method: GET
+        status_code: 200
+      register: tomcat_response
+      retries: 5
+      delay: 5
+      until: tomcat_response.status == 200
 
-    - name: Copiar jenkins.war para o diretório do Tomcat
-      copy:
-        src: "/tmp/jenkins.war"
-        dest: "{{ tomcat_webapps_dir }}/jenkins.war"
-        owner: "{{ tomcat_user }}"
-        group: "{{ tomcat_user }}"
-        mode: '0644'
+    - name: Para o Tomcat antes de modificar o setenv.sh
+      shell: "{{ tomcat_dir }}/bin/shutdown.sh"
+      args:
+        chdir: "{{ tomcat_dir }}/bin"
+      ignore_errors: yes
 
-    - name: Criar diretório JENKINS_HOME
+    - name: Cria o arquivo setenv.sh se não existir
+      file:
+        path: "{{ tomcat_dir }}/bin/setenv.sh"
+        state: touch
+        owner: "{{ tomcat_usuario }}"
+        group: "{{ tomcat_usuario }}"
+        mode: '0755'
+
+    - name: Configura variáveis de ambiente no setenv.sh
+      blockinfile:
+        path: "{{ tomcat_dir }}/bin/setenv.sh"
+        block: |
+          export JENKINS_HOME="{{ jenkins_home }}"
+
+    - name: Cria diretório JENKINS_HOME
       file:
         path: "{{ jenkins_home }}"
         state: directory
-        owner: "{{ tomcat_user }}"
-        group: "{{ tomcat_user }}"
+        owner: "{{ tomcat_usuario }}"
+        group: "{{ tomcat_usuario }}"
         mode: '0755'
 
-    - name: Reiniciar o serviço Tomcat
-      systemd:
-        name: tomcat
-        state: restarted
-        enabled: yes
+    - name: Baixa o jenkins.war
+      get_url:
+        url: "{{ jenkins_url }}"
+        dest: "{{ tomcat_dir }}/webapps/jenkins.war"
+        mode: '0644'
+
+    - name: Baixa o jolokia.war
+      get_url:
+        url: "{{ jolokia_url }}"
+        dest: "{{ tomcat_dir }}/webapps/jolokia.war"
+        mode: '0644'
+    - name: Garantir usuário Jolokia no tomcat-users.xml
+      blockinfile:
+        path: /opt/tomcat/conf/tomcat-users.xml
+        marker: "<!-- ANSIBLE: Jolokia User -->"
+        insertafter: "<tomcat-users>"
+        content: |
+          <role rolename="jolokia"/>
+          <user username="jolokia" password="jolokia" roles="jolokia"/>
+
+    - name: Inicia novamente o Tomcat com Jenkins e Jolokia
+      shell: "{{ tomcat_dir }}/bin/startup.sh"
+      args:
+        chdir: "{{ tomcat_dir }}/bin"
 
   handlers:
     - name: Reload systemd
