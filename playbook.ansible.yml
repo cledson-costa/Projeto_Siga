@@ -1,0 +1,109 @@
+- name: Instalação do Apache Tomcat e Jenkins
+  hosts: Projeto-siga
+  become: true
+
+  vars:
+    java_package: openjdk-11-jdk
+    tomcat_version: 9.0.104
+    tomcat_download_url: "https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.104/bin/apache-tomcat-9.0.104.tar.gz"
+    tomcat_dir: /opt/tomcat
+    tomcat_user: ubuntu
+    jenkins_war_url: "https://get.jenkins.io/war-stable/2.303.2/jenkins.war"
+    tomcat_webapps_dir: "/opt/tomcat/webapps"
+    jenkins_home: "/opt/jenkins"
+
+  tasks:
+    - name: Instala dependências
+      apt:
+        name: "{{ java_package }}"
+        state: present
+        update_cache: yes
+
+    - name: Cria diretório para o Tomcat
+      file:
+        path: "{{ tomcat_dir }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_user }}"
+        mode: '0755'
+
+    - name: Baixa e extrai o Tomcat 9.0.104
+      unarchive:
+        src: "{{ tomcat_download_url }}"
+        dest: "{{ tomcat_dir }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Encontra todos os scripts .sh no diretório bin
+      find:
+        paths: "{{ tomcat_dir }}/bin"
+        patterns: "*.sh"
+        recurse: no
+      register: sh_scripts
+
+    - name: Aplica permissão 0755 aos scripts .sh
+      file:
+        path: "{{ item.path }}"
+        mode: '0755'
+      loop: "{{ sh_scripts.files }}"
+
+    - name: Cria diretório para arquivos de configuração do systemd
+      file:
+        path: /etc/systemd/system/tomcat.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Cria variáveis de ambiente no systemd para Tomcat
+      copy:
+        dest: /etc/systemd/system/tomcat.service.d/override.conf
+        content: |
+          [Service]
+          Environment="JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
+          Environment="CATALINA_HOME={{ tomcat_dir }}"
+          Environment="CATALINA_BASE={{ tomcat_dir }}"
+          Environment="JAVA_OPTS=-Xms512m -Xmx1024m"
+          Environment="JENKINS_HOME={{ jenkins_home }}"
+        mode: '0644'
+      notify:
+        - Reload systemd
+
+    - name: Inicia o Tomcat
+      shell: "{{ tomcat_dir }}/bin/startup.sh"
+      args:
+        chdir: "{{ tomcat_dir }}/bin"
+
+    - name: Baixar o arquivo jenkins.war
+      get_url:
+        url: "{{ jenkins_war_url }}"
+        dest: "{{ tomcat_webapps_dir }}/jenkins.war"
+        mode: '0644'
+        
+
+    - name: Copiar jenkins.war para o diretório do Tomcat
+      copy:
+        src: "/tmp/jenkins.war"
+        dest: "{{ tomcat_webapps_dir }}/jenkins.war"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_user }}"
+        mode: '0644'
+
+    - name: Criar diretório JENKINS_HOME
+      file:
+        path: "{{ jenkins_home }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_user }}"
+        mode: '0755'
+
+    - name: Reiniciar o serviço Tomcat
+      systemd:
+        name: tomcat
+        state: restarted
+        enabled: yes
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
