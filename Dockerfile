@@ -1,19 +1,23 @@
-FROM tomcat:9.0
+FROM tomcat:10.1.40-jdk17
 
 # Instala curl para baixar o Jolokia agent
 RUN apt-get update && apt-get install -y curl
 
-# Baixa o Jolokia Agent JAR
-RUN curl -L -o /usr/local/tomcat/lib/jolokia-agent.jar https://repo1.maven.org/maven2/org/jolokia/jolokia-jvm/1.7.2/jolokia-jvm-1.7.2-agent.jar
+#Definição das pastas de deploy
+ENV CATALINA_HOME /usr/local/tomcat
+ENV DEPLOY $CATALINA_HOME/webapps
+
+# Baixa o Jolokia Agent WAR
+ADD https://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-agent-war-unsecured/2.2.9/jolokia-agent-war-unsecured-2.2.9.war $DEPLOY/jolokia.war
 
 # Copia o Jenkins WAR
-COPY jenkins.war /usr/local/tomcat/webapps/jenkins.war
+ADD https://get.jenkins.io/war-stable/2.504.1/jenkins.war $DEPLOY/jenkins.war
 
 # Define as variáveis para habilitar o Jolokia agent
 ENV JAVA_OPTS="-javaagent:/usr/local/tomcat/lib/jolokia-agent.jar=host=0.0.0.0,port=8778"
 ENV CATALINA_OPTS="-javaagent:/usr/local/tomcat/lib/jolokia-agent.jar=host=0.0.0.0,port=8778"
 
 # Expõe portas do Tomcat e Jolokia
-EXPOSE 8080 8778
+EXPOSE 8080 8080
 
 CMD ["catalina.sh", "run"]
