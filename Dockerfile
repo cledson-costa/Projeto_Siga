@@ -13,11 +13,7 @@ ADD https://search.maven.org/remotecontent?filepath=org/jolokia/jolokia-agent-wa
 # Copia o Jenkins WAR
 ADD https://get.jenkins.io/war-stable/2.504.1/jenkins.war $DEPLOY/jenkins.war
 
-# Define as variáveis para habilitar o Jolokia agent
-ENV JAVA_OPTS="-javaagent:/usr/local/tomcat/lib/jolokia-agent.jar=host=0.0.0.0,port=8778"
-ENV CATALINA_OPTS="-javaagent:/usr/local/tomcat/lib/jolokia-agent.jar=host=0.0.0.0,port=8778"
-
 # Expõe portas do Tomcat e Jolokia
-EXPOSE 8080 8080
+EXPOSE 8080     
 
 CMD ["catalina.sh", "run"]
