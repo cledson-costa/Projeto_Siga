@@ -6,12 +6,8 @@ Este repositório contém todas as instruções de como foram efetuados os proce
 
 - [Pré-requisitos](#pré-requisitos)
 - [Construção da Máquina Operacional](#contrução-máquina-operacional)
-- [Criação da máquina para servidor](#criação-maquina-para-servidor)
-- [](#)
-- [](#)
-- [](#)
-- [](#)
-- [](#)
+- [Criação da máquina para Servidor](#criação-maquina-para-servidor)
+- [Execução Docker do Serviço](#execução-docker-do-serviço)
 
 ## Pré-requisitos
 
@@ -99,26 +95,14 @@ Efetuado os procedimentos já estarão disponíveis Tomcat, aplicação Jenkins 
    
 ---
 
-## 
+## Execução Docker do Serviço
 
+### Montagem do ambiente
 
-
----
-
-
-
----
-
-## 
+1. É Criado o arquivo *Dockerfile* com a versão tomcat 9 para uso do container que já existe na biblioteca Docker.
+2. É criado uma imagem usando o comando *docker build -t tomcat:1.0 .* onde é marcado a versão e execução na pasta do comando
+3. É executada a imagem com *docker run -d -p 8080:8080 --name tomcat tomcat:1.0*
+4. Fica disponibilizada a imagem com Jenkins disponível para uso.
 
 ---
 
-## 
-
----
-
-## 
-
----
-
-## 
