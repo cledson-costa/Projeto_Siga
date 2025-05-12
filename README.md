@@ -106,3 +106,16 @@ Efetuado os procedimentos já estarão disponíveis Tomcat, aplicação Jenkins 
 
 ---
 
+## Instalação e controle via Kubernetes
+
+### Montagem do Serviço
+
+
+## Execução do serviço Kubernetes
+
+...
+
+Para verificar o IP interno usado no Minikube é possível usar o comando
+```
+kubectl get nodes -o wide
+```
