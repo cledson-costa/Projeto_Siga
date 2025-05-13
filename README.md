@@ -40,14 +40,24 @@ Para executar a criação do servidor será necessário criar uma máquina EC2 p
     unzip awscliv2.zip
     sudo ./aws/install
     ```
+    Feita a instalação é necessário adicionar a chave de acesso que nos garantirá o uso dentro do AWS a integração com o sistema AWS e uso do Terraform. Para isso, dentro da AWS acessemos a parte IAM (Identity and Access Manager) e na opção Usuários cliquemos no     usuário de acesso atual e dentro da aba "Credenciais de Segurança" vamos executar a integração da AWS com a máquina informada criando uma nova chave de acesso.
+   
+   É importante manter as duas informações guardadas após a criação da chave de acesso: *Chave AWS* e *chave secreta*.
+   Com a criação da credencial, resta na máquina principal executar:
+   ```
+   aws configure
+   ```
+   Após a adição é feita então a solicitação das duas chaves da credencial, a pública e a secreta. As demais opções podem ser deixadas em branco.
+   
 
-4. Também devemos instalar o Terraform na máquina informada:
+
+5. Também devemos instalar o Terraform na máquina informada:
     ```bash
     wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
     sudo apt update && sudo apt install terraform
     ```
-5. E por fim, precisamos instalar o Ansible para as configurações internas na máquina:
+6. E por fim, precisamos instalar o Ansible para as configurações internas na máquina:
     ```bash
     sudo apt install software-properties-common
    sudo add-apt-repository --yes --update ppa:ansible/ansible
@@ -109,6 +119,11 @@ Efetuado os procedimentos já estarão disponíveis Tomcat, aplicação Jenkins 
 ## Instalação e controle via Kubernetes
 
 ### Montagem do Serviço
+
+1. Primeiramente é necessário adicionar o serviço Kubernetes dentro da máquina operacional. Para utilização de um cluster integrado ao sistema operacional, também usaremos o Minikube para aplicação usando como driver o Docker instalado anteriormente.
+2. Para instalação e uso da ferramenta Kubernetes iremos usar o kubectl que pode ser instalado pelos seguintes comandos:
+ ```
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 
 
 ## Execução do serviço Kubernetes
