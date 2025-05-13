@@ -124,6 +124,24 @@ Efetuado os procedimentos já estarão disponíveis Tomcat, aplicação Jenkins 
 2. Para instalação e uso da ferramenta Kubernetes iremos usar o kubectl que pode ser instalado pelos seguintes comandos:
  ```
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+```
+3. Em seguida precisaremos instalar o Minikube com configuração do driver para uso do docker na máquina em questão:
+ ```
+ curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
+ sudo install minikube-linux-amd64 /usr/local/bin/minikube && rm minikube-linux-amd64
+ ```
+ Com o docker já instalado de versões anteriores vamos utilizar o próprio driver do Docker para uso do minikube no serviço
+ Antes de executar o serviço é importante fazer que o usuário atual que vá rodar o minikube tenha adesão ao grupo docker durante a implementação do minikube, é possível usar o comando:
+
+ ```
+sudo usermod -aG docker $USER && newgrp docker
+```
+E então iniciar o serviço minikube digitando:
+ ```
+ minikube start --driver=docker
+ ```
+O processo de criação do container do Minikube irá iniciar e então será possível ter o Kubernetes em funcionamento.
 
 
 ## Execução do serviço Kubernetes
