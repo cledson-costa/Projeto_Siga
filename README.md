@@ -1,6 +1,6 @@
 # Projeto Siga
 
-Este repositório contém todas as instruções de como foram efetuados os procedimentos solicitados da ativade requisitada.
+Este repositório contém todas as instruções de como foram efetuados os procedimentos para criação de um serviço dentro do Tomcat integrado com Jenkins e Jolokia para exposição das informações.
 
 ## Sumário
 
